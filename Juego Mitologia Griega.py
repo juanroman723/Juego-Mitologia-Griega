@@ -3,15 +3,21 @@ from abc import ABC, abstractmethod #Libreria para utilizar la abstracción en l
 import json #Libreria para guardar el progreso del juego en un archivo JSON
 import random #Libreria para generar números aleatorios
 from tkinter import * #Libreria para crear la interfaz gráfica del juego
-"""
-FASE 2
--Abstraccion: SerMitico es clase abstracta (ABC)
--Composición: Jugador tiene un Inventario que puede contener Items
--Métodos abstractos: atacar y usar_habilidad en SerMitico, implementados en Dios y Criatura
--Métodos mágicos: __str__ y __repr__ para representar objetos de manera legible
--Métodos estáticos: calcular_daño para calcular el daño de un ataque sin necesidad de instanciar un objeto
--Type Hints: anotaciones de tipo en métodos
-"""
+
+#COLORES Y ESTILOS PARA LA INTERFAZ GRÁFICA
+BG_DARK = "#0d0d0d"
+BG_PANEL = "#1a1610"
+BG_CARD = "#211e14"
+GOLD = "#c9a84c"
+GOLD_LIGHT = "#e8c96e"
+GOLD_DIM = "#7a6430"
+RED_HP = "#c0392b"
+BLUE_MANA = "#2980b9"
+GREEN_WIN = "#27ae60"
+TEXT_WHITE = "#f0ead6"
+TEXT_DIM = "#8a7d5a"
+BORDER = "#3a3020"
+
 class SerMitico(ABC): #Clase base abstracta para representar a los seres miticos del juego
     _total_creados = 0 #Atributo de clase para contar el total de seres miticos creados
     def __init__(self, nombre: str, vida: int, ataque: int, defensa: int) -> None:
