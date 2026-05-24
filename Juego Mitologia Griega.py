@@ -496,3 +496,111 @@ class PantallaCombate(tk.Frame):
         self.en_combate = False
         self._build()
         self._nuevo_combate()
+    
+    # ── Layout ──────────────────────────────
+    def _build(self):
+        # Encabezado
+        top = tk.Frame(self, bg=BG_PANEL,
+                       highlightthickness=1, highlightbackground=BORDER)
+        top.pack(fill="x", padx=0, pady=0)
+ 
+        self.lbl_titulo = tk.Label(top, text="", bg=BG_PANEL,
+                                   fg=GOLD, font=("Georgia", 13, "bold"))
+        self.lbl_titulo.pack(side="left", padx=20, pady=8)
+ 
+        self.lbl_score = tk.Label(top, text="", bg=BG_PANEL,
+                                  fg=GOLD_DIM, font=("Georgia", 10))
+        self.lbl_score.pack(side="right", padx=20)
+ 
+        # Arena (barras de HP/maná + log)
+        arena = tk.Frame(self, bg=BG_DARK)
+        arena.pack(fill="both", expand=True, padx=16, pady=8)
+ 
+        # Columna izquierda: stats jugador
+        self.panel_jugador = self._panel_stats(arena, lado="jugador")
+        self.panel_jugador.pack(side="left", fill="y", padx=(0,8))
+ 
+        # Centro: log de batalla
+        centro = tk.Frame(arena, bg=BG_PANEL,
+                          highlightthickness=1, highlightbackground=BORDER)
+        centro.pack(side="left", fill="both", expand=True)
+ 
+        tk.Label(centro, text="— Crónica de Batalla —",
+                 bg=BG_PANEL, fg=GOLD_DIM,
+                 font=("Georgia", 9, "italic")).pack(pady=(6,2))
+ 
+        self.log = tk.Text(centro, bg=BG_PANEL, fg=TEXT_WHITE,
+                           font=("Courier", 9), relief="flat",
+                           state="disabled", wrap="word",
+                           highlightthickness=0, bd=0)
+        self.log.pack(fill="both", expand=True, padx=8, pady=(0,8))
+ 
+        sb = tk.Scrollbar(centro, command=self.log.yview, bg=BG_PANEL)
+        sb.pack(side="right", fill="y")
+        self.log.configure(yscrollcommand=sb.set)
+ 
+        # Columna derecha: stats enemigo
+        self.panel_enemigo = self._panel_stats(arena, lado="enemigo")
+        self.panel_enemigo.pack(side="right", fill="y", padx=(8,0))
+ 
+        # Acciones
+        self._build_acciones()
+ 
+    def _panel_stats(self, parent, lado):
+        f = tk.Frame(parent, bg=BG_CARD, width=190,
+                     highlightthickness=1, highlightbackground=BORDER)
+        f.pack_propagate(False)
+ 
+        tag = lado
+        tk.Label(f, text="JUGADOR" if lado=="jugador" else "ENEMIGO",
+                 bg=BG_CARD, fg=GOLD_DIM,
+                 font=("Georgia", 8, "bold")).pack(pady=(10,2))
+ 
+        setattr(self, f"lbl_nombre_{tag}",
+                tk.Label(f, text="—", bg=BG_CARD, fg=GOLD,
+                         font=("Georgia", 12, "bold")))
+        getattr(self, f"lbl_nombre_{tag}").pack()
+ 
+        setattr(self, f"lbl_poder_{tag}",
+                tk.Label(f, text="", bg=BG_CARD, fg=TEXT_DIM,
+                         font=("Georgia", 8, "italic"), wraplength=170))
+        getattr(self, f"lbl_poder_{tag}").pack(pady=(0,6))
+ 
+        # HP bar
+        tk.Label(f, text="❤  VIDA", bg=BG_CARD, fg=RED_HP,
+                 font=("Georgia", 9, "bold")).pack(anchor="w", padx=12)
+        setattr(self, f"bar_hp_{tag}", self._barra(f, RED_HP))
+        setattr(self, f"lbl_hp_{tag}",
+                tk.Label(f, text="", bg=BG_CARD, fg=TEXT_DIM,
+                         font=("Courier", 9)))
+        getattr(self, f"lbl_hp_{tag}").pack()
+ 
+        if lado == "jugador":
+            tk.Label(f, text="◈  MANÁ", bg=BG_CARD, fg=BLUE_MANA,
+                     font=("Georgia", 9, "bold")).pack(anchor="w", padx=12, pady=(8,0))
+            self.bar_mana = self._barra(f, BLUE_MANA)
+            self.lbl_mana = tk.Label(f, text="", bg=BG_CARD, fg=TEXT_DIM,
+                                     font=("Courier", 9))
+            self.lbl_mana.pack()
+ 
+        tk.Label(f, text="", bg=BG_CARD).pack(pady=4)
+ 
+        for stat in (("⚔ ATK", "atk"), ("🛡 DEF", "def")):
+            row = tk.Frame(f, bg=BG_CARD)
+            row.pack(fill="x", padx=12, pady=1)
+            tk.Label(row, text=stat[0], bg=BG_CARD, fg=TEXT_DIM,
+                     font=("Georgia", 9)).pack(side="left")
+            setattr(self, f"lbl_{stat[1]}_{tag}",
+                    tk.Label(row, text="—", bg=BG_CARD, fg=TEXT_WHITE,
+                             font=("Georgia", 9, "bold")))
+            getattr(self, f"lbl_{stat[1]}_{tag}").pack(side="right")
+ 
+        return f
+ 
+    def _barra(self, parent, color):
+        cont = tk.Frame(parent, bg=BORDER, height=10)
+        cont.pack(fill="x", padx=12, pady=2)
+        cont.pack_propagate(False)
+        fill = tk.Frame(cont, bg=color, height=10)
+        fill.place(x=0, y=0, relheight=1.0, relwidth=1.0)
+        return fill
