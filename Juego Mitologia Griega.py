@@ -341,184 +341,158 @@ class GestorPuntajes: #Nueva clase para gestionar los puntajes de los jugadores,
     def __str__(self) -> str: #Método mágico para representar el objeto como una cadena de texto, mostrando el nombre del archivo y la cantidad de jugadores registrados en la tabla
         return f"Gestor de Puntajes - Archivo: {self.archivo} | Total Jugadores: {len(self.tabla)}"
 
-#Maquina
-class Maquina: #Nueva clase para representar a la máquina que genera los enemigos de forma aleatoria durante el combate
-    def obtener_enemigo(self) -> Criatura: #Método para obtener un enemigo de forma aleatoria, utilizando la función random.choice para seleccionar una criatura de la lista de criaturas disponibles
-        return random.choice([Minotauro(), Medusa(), Ciclope(), Hidra(), Escila()])
-    def __repr__(self) -> str: #Método mágico para representar el objeto de manera formal, mostrando su tipo
-        return f"Maquina()"
-    def __str__(self) -> str: #Método mágico para representar el objeto como una cadena de texto
-        return "Máquina Generadora de Enemigos"
+#GUI
+class App (tk.Tk): #Nueva clase para representar la aplicación gráfica del juego, utilizando la librería tkinter para crear la interfaz de usuario
+    def __init__(self):
+        super().__init__()
+        self.title("Juego de Mitología Griega")
+        self.geometry("900x680")
+        self.configure(bg=BG_DARK)
+        self.resizable(False, False)
+        self.gestor = GestorPuntajes()
+        self.__frameactual = None
+        self.mostrar_menu()
     
-class MotorCombate: #Nueva clase para representar el motor de combate, que se encarga de ejecutar la lógica del juego, manejando los turnos de ataque entre el jugador y la máquina, y actualizando el estado del jugador después de cada combate
-    def __init__(self, jugador: Jugador, maquina: Maquina, gestor: GestorPuntajes) -> None:
-        self.jugador = jugador
-        self.maquina = maquina
-        self.gestor = gestor
-        self.max_combates = 10
-        self.combates_realizados = 0
+    def cambiar_frame(self, nuevo_frame):
+        if self.__frameactual:
+            self.__frameactual.destroy()
+        self.__frameactual = nuevo_frame
+        self.__frameactual.pack(fill="both", expand=True)
 
-    def generar_item_random(self) -> Item: #Método para generar un item de forma aleatoria, utilizando la función random.choice para seleccionar un item de la lista de items disponibles
-        posibles= [Item("Poción", "Curación", 75), 
-                   Item("Cristal de maná", "Maná", 50),
-                   Item("Espada de divina", "Ataque", 25),]
-        return random.choice(posibles)
+    def mostrar_menu(self):
+        self.cambiar_frame(PantallaMenu(self))
     
-    def combate(self, dios: Dios, criatura: Criatura) -> bool: #Método para ejecutar el combate entre el jugador y la máquina, manejando los turnos de ataque y actualizando el estado del jugador después de cada acción
-        turno = 1
-        while dios.esta_vivo() and criatura.esta_vivo():
-            print (f"\n Turno #{turno}")
-            print(f"{dios} vs {criatura}")
-            print(f"{dios.nombre} - Vida: {dios.vida}/{dios.vida_maxima} | Maná: {dios.mana}")
-            print(f"{criatura.nombre} - Vida: {criatura.vida}/{criatura.vida_maxima}")
-            turno += 1
-
-            try: 
-                accion_dios = input("¿Qué ataque hará el Dios: \n (1) Atacar  \n (2) Usar poder \n (3) Usar item \n Ingresa el numero: ")
-            except: 
-                print("Entrada invalida")
-                continue
-
-            if accion_dios == "1":
-                _, daño, critico = dios.atacar(criatura)
-                daño_real = criatura.recibir_daño(daño)
-                print(f"{dios.nombre} hizo {daño_real} de daño")
-                if critico:
-                    print("GOLPE CRITICO x2")
-
-            elif accion_dios == "2":
-                daño = dios.usar_habilidad()
-                daño_real = criatura.recibir_daño(daño)
-                print (f"{dios.nombre} usó su habilidad {dios.poder_especial} e hizo {daño_real} de daño")
-            
-            elif accion_dios == "3":
-                print (self.jugador.inventario)
-                if len(self.jugador.inventario) > 0:
-                    try:
-                        opcion = int(input("Selecciona el número del item que deseas usar: "))
-                        self.jugador.inventario.usar_item(opcion - 1, dios)
-                    except (ValueError, IndexError):
-                        print("Opción inválida")
-                        continue
-                else:
-                    print("Accion invalida")
-                    continue
-            else: 
-                print("Accion incorrecta")
-                continue
-
-            if criatura.esta_vivo():
-                accion_criatura = random.choice(["atacar", "habilidad"])
-
-                if accion_criatura == "atacar":
-                    _, daño, critico = criatura.atacar(dios)
-                    daño_real = dios.recibir_daño(daño)
-                    print(f"{criatura.nombre} hizo {daño_real} de daño")
-
-                    if critico:
-                        print("GOLPE CRITICO x2")
-
-                else:
-                    daño = criatura.usar_habilidad()
-                    daño_real = dios.recibir_daño(daño)
-                    print (f"{criatura.nombre} usó su habilidad {criatura.habilidad} e hizo {daño_real} de daño")
-
-        return dios.esta_vivo()
-            
-    def ejecutar_partida(self): #Método para ejecutar la partida completa, manejando los combates entre el jugador y la máquina, y actualizando el estado del jugador después de cada combate
-        while self.combates_realizados < self.max_combates:
-            print(f"\n Combate #{self.combates_realizados + 1   } ")
-            self.jugador.dios.vida = self.jugador.dios.vida_maxima #Restaurar la vida del dios al máximo después de cada combate
-            self.jugador.dios.mana = self.jugador.dios.mana_maximo #Restaurar el maná del dios al máximo después de cada combate
-            enemigo = self.maquina.obtener_enemigo()
-            victoria = self.combate(self.jugador.dios, enemigo)
-            self.combates_realizados += 1
-
-            if victoria: 
-                print("GANASTE EL COMBATE")
-                self.jugador.victorias += 1
-                mensaje = self.jugador.subir_nivel()
-
-                if mensaje:
-                    print(mensaje)
-
-                puntos = int((enemigo.vida_maxima + enemigo.ataque) * enemigo.multiplicador)
-                self.jugador.actualizar_score(puntos)
-
-                print(f"Has ganado {puntos} puntos. Score actual: {self.jugador.score}")
-
-                if self.jugador.nivel % 3 == 0:
-                    item_ganado = self.generar_item_random()
-                    self.jugador.inventario.agregar_items(item_ganado)
-                    print(f"¡Has ganado un nuevo item: {item_ganado.nombre}!")
-
-            else:
-                print("PERDISTE EL COMBATE")
-                print("GAME OVER")
-
-                puntos = int((enemigo.vida_maxima + enemigo.ataque) * enemigo.multiplicador * 0.5)
-                self.jugador.actualizar_score(-puntos)
-
-                print(f"Has perdido {puntos} puntos. Score actual: {self.jugador.score}")
-                break
-
-            print(f"Estado actual del jugador: {self.jugador}")
-
-        if self.combates_realizados == self.max_combates:
-            print("¡Felicidades, has completado todos los combates!")
-
-        print("\n¡Partida finalizada!")
-        self.gestor.guardar(self.jugador)
-        self.gestor.mostrar_top10()
-        print(f"Total de seres míticos creados durante esta partida: {SerMitico.total_creados()}") #Uso de @classmethod para mostrar el total de seres miticos
-        print(f"Gracias por jugar, {self.jugador.nombre_jugador}. Tu puntaje final es: {self.jugador.score}")
-        def __repr__(self) -> str: #Método mágico para representar el objeto de manera formal, mostrando su tipo y atributos principales
-            return f"MotorCombate(jugador={self.jugador}, maquina={self.maquina}, gestor={self.gestor})"
-        def __str__(self) -> str: #Método mágico para representar el objeto como una cadena de texto, mostrando el estado actual del jugador y la cantidad de combates realizados
-            return (f"Motor de Combate - Jugador: {self.jugador.nombre_jugador} | Combates Realizados: {self.combates_realizados} | "
-                    f"Estado del Jugador: {self.jugador}")
-
-#Main
-if __name__ == "__main__": #Punto de entrada del programa, donde se inicializa el gestor de puntajes, se muestra el top 10 de jugadores, se solicita al usuario que seleccione su dios y se inicia la partida
-    gestor = GestorPuntajes()
-    print("MITOLOGIA GRIEGA - JUEGO DE COMBATE")
-    gestor.mostrar_top10()
-    while True:
-        print("¡Bienvenido al Juego de Mitología Griega! Selecciona tu Dios para comenzar la aventura: ")
-        try:
-            opcion = int(input("1. Zeus \n2. Ares \n3. Poseidon \n4. Hades \n5. Atenea \nIngresa el numero de tu elección: "))
-        except ValueError:
-            print("Entrada inválida")
-            continue
-
-        if opcion == 1:
-            dios = Zeus()
-
-        elif opcion == 2:
-            dios = Ares()
-
-        elif opcion == 3:
-            dios = Poseidon()
-
-        elif opcion == 4:
-            dios = Hades()
-
-        elif opcion == 5:
-            dios = Atenea()
-
-        else:
-            print("Opción inválida")
-            continue
-
-        nombre = input("Ingresa tu nombre de jugador: ")
+    def iniciar_partida(self, nombre, dios):
         jugador = Jugador(nombre_jugador=nombre, dios=dios)
         item_inicial = Item("Poción de Inicio", "Curación", 50)
         jugador.inventario.agregar_items(item_inicial)
+        self.cambiar_frame(PantallaCombate(self, jugador))
 
-        print(f"¡Bienvenido {jugador.nombre_jugador}! Has seleccionado a {jugador.dios.nombre} como tu Dios y comienzas con {item_inicial.nombre}. "
-              f"¡Buena suerte en tu aventura!")
-        maquina = Maquina()
+#Helpers de Estilo
+def label (parent, text, size = 11, color = TEXT_WHITE, bold=False, italic=False):
+    weight = "bold" if bold else "normal"
+    slant = "italic" if italic else "roman"
+    return tk.Label(parent, text=text, bg=parent["bg"] if hasattr(parent,"_w",) else BG_DARK, fg=color, font=("Georgia", size, weight, slant))
+
+def sep (parent, color=GOLD_DIM):
+    f = tk.Frame(parent, bg=color, height=1)
+    f.pack(fill="x", padx=20, padx=6)
+    return f
+
+def gold_btn(parent, text, cmd, width=18):
+    b = tk.Button(parent, text = text, command = cmd, bg = BG_CARD, fg= GOLD, activebackground= GOLD_DIM, 
+                  activeforeground=BG_DARK, relief="flat", font=("Georgia", 10, "bold"), bd=0, padx=14, pady=8, width=width,
+                  highlightthickness=1, highlightbackground=GOLD_DIM, cursor="hand2")
+    return b
+
+# Menu principal
+DIOSES_INFO = {
+    "Zeus": ("Rayo Divino", "100 HP | 70 ATQ | 25 DEF| 200 MANA"),
+    "Ares": ("Furia de Guerra", "130 HP | 65 ATQ | 40 DEF| 150 MANA"),
+    "Poseidon": ("Oleada Marina", "120 HP | 75 ATQ | 30 DEF| 180 MANA"),
+    "Hades": ("Sombra del Inframundo", "110 HP | 80 ATQ | 35 DEF| 160 MANA"),
+    "Atenea": ("Escudo de Sabiduría", "90 HP | 60 ATQ | 50 DEF| 170 MANA")
+}
+
+DIOSES_CLASES = {
+    "Zeus": Zeus,
+    "Ares": Ares,
+    "Poseidon": Poseidon,
+    "Hades": Hades,
+    "Atenea": Atenea
+}
+
+class PantallaMenu(tk.Frame): #Nueva clase para representar la pantalla del menú principal, donde el jugador puede seleccionar su dios y comenzar la partida
+    def __init__(self, master: App):
+        super().__init__(master, bg=BG_DARK)
+        self.master = master
+        self._seleccion = tk.StringVar(value="Zeus")
+        self.build()
+    
+    def build(self):
+        tk.Label(self, text="JUEGO DE MITOLOGÍA GRIEGA", bg=BG_DARK, fg=GOLD, font=("Georgia", 26, "bold")).pack(pady=(30, 4))
+        tk.Label(self, text="- JUEGO DE COMBATE -", bg=BG_DARK, fg=GOLD_DIM, font=("Georgia", 12, "italic")).pack(pady=(0, 16))
+    sep(self)
+
+    mid = tk.Frame(self, bg=BG_DARK)
+    mid.pack = (fill="x", padx=60)
+
+    tk.Label(mid, text="Nombre del guerrero", bg = BG_DARK, fg=TEXT_DIM, font=("Georgia", 10, "italic")).pack(anchor="w", pady=(10, 2))
+    self._entry_nombre = tk.Entry(mid, font=("Georgia",13), bg=BG_CARD, fg=TEXT_WHITE, insertbackground=GOLD, relief="flat", bd=6)
+    self._entry_nombre.pack(fill="x", ipady=6)
+    sep(self)
+
+    tk.Label(self,text="Elige tu Dios", bg=BG_DARK, fg=GOLD, font=("Georgia", 13, "bold")).pack(pady=(8,10))
+
+    grid = tk.Frame(self, bg=BG_DARK)
+    grid.pack()
+
+    self._info_label = tk.Label(self, text="", bg=BG_DARK, fg=TEXT_DIM, font=("Georgia", 10, "italic"))
+    self._info_label.pack(pady=6)
+
+    for nombre, (icono, poder, stats) in DIOSES_INFO.items():
+        self._card_dios(grid, nombre, icono, poder, stats)
+
+    self._seleccion.set("Zeus")
+    self._actualizar_info("Zeus")
+    sep(self)
+
+    btns = tk.Frame(self, bg=BG_DARK)
+    btns.pack(pady=14)
+
+    gold_btn(btns, "VER TOP 10", self._ver_top10, width=16).pack(side="left", padx=10)
+    gold_btn(btns, "Comenzar Partida", self._comenzar, width=20).pack(side="left", padx=10)
+
+    def _card_dios(self, parent, nombre, icono, poder, stats):
+        var= self._seleccion
+        col = BG_CARD
+
+        frame = tk.Frame(parent, bg=col, bd=0, highlightthickness=1, highlightbackground=GOLD_DIM, cursor="hand2")
+        frame.pack(side="left", padx=8, pady=4, ipadx=10, ipady=8)
+
+        tk.Label(frame, text=icono, bg=col, font=("", 22)),pack()
+        tk.Label(frame, text=nombre, bg=col, fg=GOLD, font=("Georgia", 10, "bold")).pack()
+
+        def select():
+            var.set(nombre)
+            self._actualizar_info(nombre)
+            for w in parent.winfo_children():
+                w.configure(highlightbackground=GOLD_DIM)
+            frame.configure(highlightbackground=GOLD, highlightthickness=2)
+    
+        frame.bind("<Button-1>", lambda e: select())
+        for child in frame.winfo_children():
+            child.bind("<Button-1>", lambda e:select())
+
+    def _actualizar_info(self, nombre):
+        icono, poder, stats = DIOSES_INFO[nombre]
+        self._info_label.config(text=f"{icono} {nombre} | {poder} | {stats} | (+/- variacion aleatoria)")
+    
+    def comenzar(self):
+        nombre = self._entry_nombre.get().strip()
+        if not nombre:
+            messagebox.showwarning("ATENCION", "INGRESA TU NOMBRE")
+            return
+        dios_cls = DIOSES_CLASES[self._seleccion.get()]
+        self.master.iniciar_partida(nombre, dios_cls())
+    
+    def _ver_top10(self):
+        self.master.mostrar_top10(None)
         
-        motor = MotorCombate(jugador, maquina, gestor)
-        motor.ejecutar_partida()
-        break
+#PANTALLA COMBATE
+CRIATURAS_LISTA = [Minotauro, Medusa, Ciclope, Hidra, Escila]
+ 
+class PantallaCombate(tk.Frame):
+    MAX_COMBATES = 10
+ 
+    def __init__(self, master: App, jugador: Jugador):
+        super().__init__(master, bg=BG_DARK)
+        self.master   = master
+        self.jugador  = jugador
+        self.dios     = jugador.dios
+        self.combates = 0
+        self.turno    = 1
+        self.enemigo  = None
+        self.en_combate = False
+        self._build()
+        self._nuevo_combate()
