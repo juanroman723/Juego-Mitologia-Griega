@@ -604,3 +604,275 @@ class PantallaCombate(tk.Frame):
         fill = tk.Frame(cont, bg=color, height=10)
         fill.place(x=0, y=0, relheight=1.0, relwidth=1.0)
         return fill
+    def _build_acciones(self):
+        bot = tk.Frame(self, bg=BG_PANEL,
+                       highlightthickness=1, highlightbackground=BORDER)
+        bot.pack(fill="x", padx=0, pady=0, side="bottom")
+ 
+        btns = tk.Frame(bot, bg=BG_PANEL)
+        btns.pack(pady=10)
+ 
+        self.btn_atacar  = gold_btn(btns, "⚔  Atacar",     self._accion_atacar,  14)
+        self.btn_poder   = gold_btn(btns, "✨  Usar Poder", self._accion_poder,   16)
+        self.btn_item    = gold_btn(btns, "🎒  Usar Ítem",  self._abrir_inventario, 14)
+ 
+        self.btn_atacar.pack(side="left", padx=8)
+        self.btn_poder.pack(side="left",  padx=8)
+        self.btn_item.pack(side="left",   padx=8)
+ 
+    # ── Lógica de combate ───────────────────
+    def _nuevo_combate(self):
+        if self.combates >= self.MAX_COMBATES:
+            self._fin_partida(completa=True)
+            return
+        self.combates += 1
+        self.turno = 1
+        self.dios.vida = self.dios.vida_maxima
+        self.dios.mana = self.dios.mana_maximo
+        self.enemigo = random.choice(CRIATURAS_LISTA)()
+        self.en_combate = True
+        self._set_botones(True)
+        self.lbl_titulo.config(
+            text=f"Combate #{self.combates}/{self.MAX_COMBATES}  ·  Nivel {self.jugador.nivel}  ·  {self.jugador.nombre_jugador}")
+        self._actualizar_score()
+        self._actualizar_stats()
+        self._log(f"\n{'═'*38}", GOLD_DIM)
+        self._log(f"  COMBATE #{self.combates}: {self.dios.nombre} vs {self.enemigo.nombre}", GOLD)
+        self._log(f"{'═'*38}\n", GOLD_DIM)
+ 
+    def _actualizar_stats(self):
+        d = self.dios
+        e = self.enemigo
+ 
+        self.lbl_nombre_jugador.config(text=d.nombre)
+        self.lbl_poder_jugador.config(text=d.poder_especial)
+        self.lbl_hp_jugador.config(text=f"{d.vida} / {d.vida_maxima}")
+        self.lbl_atk_jugador.config(text=str(d.ataque))
+        self.lbl_def_jugador.config(text=str(d.defensa))
+        self.lbl_mana.config(text=f"{d.mana} / {d.mana_maximo}")
+        self._set_barra(self.bar_hp_jugador, d.vida, d.vida_maxima)
+        self._set_barra(self.bar_mana, d.mana, d.mana_maximo)
+ 
+        if e:
+            self.lbl_nombre_enemigo.config(text=e.nombre)
+            self.lbl_poder_enemigo.config(text=e.habilidad)
+            self.lbl_hp_enemigo.config(text=f"{e.vida} / {e.vida_maxima}")
+            self.lbl_atk_enemigo.config(text=str(e.ataque))
+            self.lbl_def_enemigo.config(text=str(e.defensa))
+            self._set_barra(self.bar_hp_enemigo, e.vida, e.vida_maxima)
+ 
+    def _set_barra(self, bar, actual, maximo):
+        pct = max(0.0, min(1.0, actual / maximo)) if maximo else 0
+        bar.place(relwidth=pct)
+ 
+    def _actualizar_score(self):
+        self.lbl_score.config(
+            text=f"Score: {self.jugador.score}  |  Victorias: {self.jugador.victorias}")
+ 
+    def _log(self, msg, color=TEXT_WHITE):
+        self.log.configure(state="normal")
+        tag = f"c{color}"
+        self.log.tag_configure(tag, foreground=color)
+        self.log.insert("end", msg + "\n", tag)
+        self.log.configure(state="disabled")
+        self.log.see("end")
+ 
+    def _set_botones(self, estado):
+        s = "normal" if estado else "disabled"
+        for b in (self.btn_atacar, self.btn_poder, self.btn_item):
+            b.configure(state=s)
+ 
+    # ── Acciones del jugador ────────────────
+    def _accion_atacar(self):
+        if not self.en_combate: return
+        self._log(f"\n── Turno #{self.turno} ──", GOLD_DIM)
+        _, daño, critico = self.dios.atacar(self.enemigo)
+        real = self.enemigo.recibir_daño(daño)
+        msg = f"  {self.dios.nombre} ataca → {real} daño"
+        if critico: msg += "  ⚡ CRÍTICO x2"
+        self._log(msg, GOLD_LIGHT if critico else TEXT_WHITE)
+        self._actualizar_stats()
+        self._turno_enemigo()
+ 
+    def _accion_poder(self):
+        if not self.en_combate: return
+        self._log(f"\n── Turno #{self.turno} ──", GOLD_DIM)
+        daño = self.dios.usar_habilidad()
+        if daño == 0:
+            self._log(f"  ✗ Maná insuficiente para {self.dios.poder_especial}", RED_HP)
+            return
+        real = self.enemigo.recibir_daño(daño)
+        self._log(f"  {self.dios.nombre} usa {self.dios.poder_especial} → {real} daño", GOLD)
+        self._actualizar_stats()
+        self._turno_enemigo()
+ 
+    def _turno_enemigo(self):
+        self.turno += 1
+        if not self.enemigo.esta_vivo():
+            self._victoria()
+            return
+ 
+        accion = random.choice(["atacar", "habilidad"])
+        if accion == "atacar":
+            _, daño, critico = self.enemigo.atacar(self.dios)
+            real = self.dios.recibir_daño(daño)
+            msg = f"  {self.enemigo.nombre} contraataca → {real} daño"
+            if critico: msg += "  ⚡ CRÍTICO x2"
+            self._log(msg, "#e07070" if not critico else RED_HP)
+        else:
+            daño = self.enemigo.usar_habilidad()
+            real = self.dios.recibir_daño(daño)
+            self._log(f"  {self.enemigo.nombre} usa {self.enemigo.habilidad} → {real} daño", "#e07070")
+ 
+        self._actualizar_stats()
+ 
+        if not self.dios.esta_vivo():
+            self._derrota()
+ 
+    def _victoria(self):
+        self.en_combate = False
+        self._set_botones(False)
+        self.jugador.victorias += 1
+        puntos = int((self.enemigo.vida_maxima + self.enemigo.ataque) * self.enemigo.multiplicador)
+        self.jugador.actualizar_score(puntos)
+        self._log(f"\n  ✦ VICTORIA — +{puntos} pts", GREEN_WIN)
+ 
+        msg = self.jugador.subir_nivel()
+        if msg: self._log(f"  {msg}", GOLD)
+ 
+        if self.jugador.nivel % 3 == 0:
+            item = random.choice([
+                Item("Poción", "Curación", 75),
+                Item("Cristal de maná", "Maná", 50),
+                Item("Espada Divina", "Ataque", 25),
+            ])
+            ok = self.jugador.inventario.agregar(item)
+            if ok:
+                self._log(f"  🎁 Obtuviste: {item.nombre}", GOLD_LIGHT)
+ 
+        self._actualizar_score()
+        self.after(1400, self._nuevo_combate)
+ 
+    def _derrota(self):
+        self.en_combate = False
+        self._set_botones(False)
+        puntos = int((self.enemigo.vida_maxima + self.enemigo.ataque) * self.enemigo.multiplicador * 0.5)
+        self.jugador.actualizar_score(-puntos)
+        self._log(f"\n  ✗ DERROTA — -{puntos} pts", RED_HP)
+        self._log("  ═══════  GAME OVER  ═══════", RED_HP)
+        self._actualizar_score()
+        self.after(2000, self._fin_partida)
+ 
+    def _fin_partida(self, completa=False):
+        self.master.gestor.guardar(self.jugador)
+        if completa:
+            self._log("\n  🏆 ¡Completaste todos los combates!", GOLD)
+        self.master.mostrar_top10(self.jugador)
+ 
+    # ── Inventario popup ────────────────────
+    def _abrir_inventario(self):
+        if not self.en_combate: return
+        inv = self.jugador.inventario
+        if not inv.items:
+            self._log("  ✗ Inventario vacío", TEXT_DIM)
+            return
+ 
+        win = tk.Toplevel(self, bg=BG_CARD)
+        win.title("Inventario")
+        win.geometry("320x280")
+        win.resizable(False, False)
+        win.grab_set()
+ 
+        tk.Label(win, text="─── Inventario ───", bg=BG_CARD,
+                 fg=GOLD, font=("Georgia", 12, "bold")).pack(pady=(14,6))
+ 
+        for i, item in enumerate(inv.items):
+            row = tk.Frame(win, bg=BG_CARD)
+            row.pack(fill="x", padx=20, pady=3)
+            tk.Label(row, text=str(item), bg=BG_CARD, fg=TEXT_WHITE,
+                     font=("Courier", 10), anchor="w").pack(side="left", expand=True)
+            def usar(idx=i, w=win):
+                msg = self.jugador.inventario.usar_item(idx, self.dios)
+                self._log(f"  {msg}", GOLD_LIGHT)
+                self._actualizar_stats()
+                w.destroy()
+            tk.Button(row, text="Usar", command=usar,
+                      bg=GOLD_DIM, fg=BG_DARK,
+                      font=("Georgia", 9, "bold"),
+                      relief="flat", padx=8, pady=2,
+                      cursor="hand2").pack(side="right")
+ 
+        gold_btn(win, "Cerrar", win.destroy, 12).pack(pady=12)
+ 
+ 
+# ─────────────────────────────────────────────
+#  PANTALLA TOP 10
+# ─────────────────────────────────────────────
+class PantallaTop10(tk.Frame):
+    def __init__(self, master: App, jugador):
+        super().__init__(master, bg=BG_DARK)
+        self.master  = master
+        self.jugador = jugador
+        self._build()
+ 
+    def _build(self):
+        tk.Label(self, text="🏆  TABLA DE HONOR  🏆",
+                 bg=BG_DARK, fg=GOLD,
+                 font=("Georgia", 22, "bold")).pack(pady=(30,4))
+        tk.Label(self, text="— Los guerreros más gloriosos —",
+                 bg=BG_DARK, fg=GOLD_DIM,
+                 font=("Georgia", 11, "italic")).pack(pady=(0,16))
+        sep(self)
+ 
+        tabla = tk.Frame(self, bg=BG_DARK)
+        tabla.pack(padx=80, fill="x")
+ 
+        headers = ["#", "Guerrero", "Score", "Nivel", "Victorias"]
+        widths   = [4, 20, 10, 8, 10]
+        for col, (h, w) in enumerate(zip(headers, widths)):
+            tk.Label(tabla, text=h, bg=BG_DARK, fg=GOLD_DIM,
+                     font=("Georgia", 10, "bold"),
+                     width=w, anchor="w").grid(row=0, column=col, padx=4, pady=4)
+ 
+        top = self.master.gestor.top10()
+        medalles = ["🥇", "🥈", "🥉"]
+ 
+        for i, j in enumerate(top):
+            bg = BG_CARD if i % 2 == 0 else BG_PANEL
+            medal = medalles[i] if i < 3 else f" {i+1}."
+            es_actual = self.jugador and j["nombre_jugador"] == self.jugador.nombre_jugador
+            color = GOLD if es_actual else TEXT_WHITE
+ 
+            vals = [medal, j["nombre_jugador"], j["score"], j["nivel"], j["victorias"]]
+            for col, (val, w) in enumerate(zip(vals, widths)):
+                tk.Label(tabla, text=str(val), bg=bg, fg=color,
+                         font=("Courier", 10),
+                         width=w, anchor="w").grid(row=i+1, column=col,
+                                                    padx=4, pady=2, sticky="w")
+ 
+        if not top:
+            tk.Label(tabla, text="(Sin registros aún)", bg=BG_DARK,
+                     fg=TEXT_DIM, font=("Georgia", 11, "italic")).grid(
+                row=1, column=0, columnspan=5, pady=20)
+ 
+        sep(self)
+ 
+        if self.jugador:
+            tk.Label(self, text=f"Partida finalizada  ·  {self.jugador.nombre_jugador}  ·  "
+                                f"Score: {self.jugador.score}  ·  Victorias: {self.jugador.victorias}",
+                     bg=BG_DARK, fg=TEXT_DIM,
+                     font=("Georgia", 10, "italic")).pack(pady=6)
+ 
+        btns = tk.Frame(self, bg=BG_DARK)
+        btns.pack(pady=16)
+        gold_btn(btns, "⚡  Jugar de nuevo", self.master.mostrar_menu, 18).pack(side="left", padx=10)
+        gold_btn(btns, "✕  Salir",          self.master.destroy,      12).pack(side="left", padx=10)
+ 
+ 
+# ─────────────────────────────────────────────
+#  ENTRY POINT
+# ─────────────────────────────────────────────
+if __name__ == "__main__":
+    app = App()
+    app.mainloop()
+ 
