@@ -118,5 +118,5 @@ puntajes.json
 ---
 
 ## Autor
-Juan Roman
+Juan José Román Hincapié
 Thomas Alejandro Restrepo Vásquez
